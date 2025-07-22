@@ -1,9 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load color_filters %}
 {% load crispy_forms_tags %}
-
 {% block title %}Agenda Semanal del Headhunter - OpenToJob{% endblock %}
-
 {# Carga de CSS de FullCalendar en el HEAD #}
 {% block extra_head %}
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
@@ -89,7 +88,8 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script> {# Para el idioma español #}
 
-    <script>
+    <script >
+        
         document.addEventListener('DOMContentLoaded', function () {
             var calendarEl = document.getElementById('calendar');
             var calendar = new FullCalendar.Calendar(calendarEl, {

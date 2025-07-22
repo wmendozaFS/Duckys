@@ -279,6 +279,7 @@ def api_acciones_headhunter(request):
             'start': accion.fecha_hora_inicio.isoformat(), # Usar fecha_hora_inicio del modelo
             # Calcular el 'end' usando la duración. Añadir el timezone.timedelta
             'end': (accion.fecha_hora_inicio + timedelta(minutes=accion.duracion_minutos)).isoformat() if accion.fecha_hora_inicio else None,
+            'backgroundColor': color_por_tipo(accion.tipo), # Usar el filtro de color
             'extendedProps': { # Datos adicionales para uso en JS
                 'descripcion': accion.descripcion, # Cambiado de 'notes' a 'descripcion'
                 'oferta_id': accion.oferta.id if accion.oferta else None, # Asegúrate de que existe oferta antes de acceder a .id
@@ -316,7 +317,7 @@ def crear_accion_ajax(request):
         return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
 @headhunter_required
-def editar_accion_ajax(request, pk):
+def editar_accion_ajax(request, accion_id):
     """
     Carga el formulario de edición para una acción de agenda (GET)
     y maneja la actualización (POST).
@@ -357,3 +358,18 @@ def eliminar_accion_ajax(request, accion_id):
     accion.delete()
     messages.success(request, 'Acción eliminada exitosamente.')
     return JsonResponse({'status': 'ok'})
+
+
+def color_por_tipo(tipo):
+    """
+    Devuelve el color asociado a un tipo de acción.
+    """
+    tipo_colores = {
+        'entrevista': '#007bff',  # Azul (bg-primary)
+        'llamada': '#28a745',     # Verde (bg-success)
+        'recordatorio': '#ffc107', # Amarillo (bg-warning)
+        'entrega': '#dc3545',     # Rojo (bg-danger)
+        'otro': '#6c757d',        # Gris (bg-secondary)
+    }
+    return tipo_colores.get(tipo, '#6c757d') # Gris por defecto
+    
