@@ -1,7 +1,7 @@
-from django.views.generic import TemplateView
+# jobs/views.py
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.contrib.auth.models import Group
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -10,23 +10,20 @@ from django.http import JsonResponse, HttpResponse # Import HttpResponse for the
 from django.utils.decorators import method_decorator
 from datetime import timedelta # Necesario para calcular 'end' en eventos de calendario
 from django.views.decorators.http import require_GET, require_POST # Importar para decoradores de método HTTP
-from jobs.models import JobOffer, Candidatura
-from django.core.mail import send_mail
-
 
 # Importa tus modelos y formularios
 from .models import JobOffer, Candidatura, AgendaAccion, StatusMessageTemplate
-# --- CAMBIO IMPORTANTE AQUÍ ---
+
 # Corregido 'CandidatureStatusForm' a 'CandidaturaStatusForm'
-from .forms import JobOfferForm, CandidaturaForm, AgendaAccionForm, CandidaturaStatusForm
+from .forms import JobOfferForm, CandidaturaForm, AgendaAccionForm, CandidaturaStatusForm 
 
 # Importa tus decoradores personalizados y Mixins
 from .decorators import headhunter_required, HeadhunterRequiredMixin 
 
 # --- Vistas del Dashboard del Headhunter y Gestión de Ofertas ---
 
-# Usamos HeadhunterRequiredMixin directamente en lugar del decorador para CBV
-
+# Usamos HeadhunterRequiredMixin directamente en lugar del decorador para CBV ---
+# --- Vistas para la Gestión de Ofertas (Headhunter) ---
 class HeadhunterDashboardView(HeadhunterRequiredMixin, ListView):
     """
     Muestra el panel de control del headhunter con las candidaturas
@@ -42,55 +39,8 @@ class HeadhunterDashboardView(HeadhunterRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['is_headhunter'] = True
-
-        candidaturas = context['candidaturas']
-        context['items'] = [
-        {
-            'candidatura': c,
-            'form': CandidaturaStatusForm(instance=c)
-        }
-        for c in candidaturas
-    ]
+        context['is_headhunter'] = True 
         return context
-    
-    def post(self, request, *args, **kwargs):
-        print("POST recibido")
-        candidature_id = request.POST.get('candidature_id')
-        candidatura = Candidatura.objects.get(id=candidature_id)
-        form = CandidaturaStatusForm(request.POST, instance=candidatura)
-        print("ID candidatura:", candidature_id)
-
-        if form.is_valid():
-            form.save()
-
-            # Enviar email al candidato
-            estado_humano = candidatura.get_estado_display()
-            asunto = f"Actualización de tu candidatura a {candidatura.offer.title}"
-            mensaje = f"""
-Hola {candidatura.user.first_name or candidatura.user.username},
-
-Tu candidatura para el puesto '{candidatura.offer.title}' ha sido actualizada al estado: {estado_humano}.
-
-Gracias por usar nuestra plataforma OpenToJob.
-
-Un saludo,
-El equipo de OpenToJob
-"""         
-            print("Enviando correo a:", candidatura.user.email)
-            send_mail(
-                subject=asunto,
-                message=mensaje,
-                from_email=None,  # Usará DEFAULT_FROM_EMAIL
-                recipient_list=[candidatura.user.email],
-                fail_silently=True,
-            )
-
-            messages.success(request, f"Estado actualizado y correo enviado a {candidatura.user.username}")
-        else:
-            messages.error(request, "No se pudo actualizar la candidatura.")
-
-        return redirect('headhunter_dashboard')
 
 class CreateOfferView(HeadhunterRequiredMixin, CreateView):
     """
@@ -182,6 +132,13 @@ class JobOfferDetailView(DetailView):
         return context
 
 # --- Vistas de Postulación ---
+@login_required
+def candidate_dashboard(request):
+    candidaturas = Candidatura.objects.filter(user=request.user).select_related('offer')
+
+    return render(request, 'jobs/candidate_dashboard.html', {
+        'candidaturas': candidaturas,
+    })
 
 @login_required 
 def apply_to_offer(request, offer_id):
@@ -295,7 +252,7 @@ def api_acciones_headhunter(request):
             'start': accion.fecha_hora_inicio.isoformat(), # Usar fecha_hora_inicio del modelo
             # Calcular el 'end' usando la duración. Añadir el timezone.timedelta
             'end': (accion.fecha_hora_inicio + timedelta(minutes=accion.duracion_minutos)).isoformat() if accion.fecha_hora_inicio else None,
-            'backgroundColor': color_por_tipo(accion.tipo),
+            'backgroundColor': color_por_tipo(accion.tipo), # Usar el filtro de color
             'extendedProps': { # Datos adicionales para uso en JS
                 'descripcion': accion.descripcion, # Cambiado de 'notes' a 'descripcion'
                 'oferta_id': accion.oferta.id if accion.oferta else None, # Asegúrate de que existe oferta antes de acceder a .id
@@ -305,14 +262,6 @@ def api_acciones_headhunter(request):
             }
         })
     return JsonResponse(events, safe=False)
-def color_por_tipo(tipo):
-    return {
-        'entrevista': '#0d6efd',     # Bootstrap primary
-        'llamada': '#198754',        # Bootstrap success
-        'recordatorio': '#ffc107',   # Bootstrap warning
-        'entrega': '#dc3545',        # Bootstrap danger
-        'otro': '#6c757d'            # Bootstrap secondary
-    }.get(tipo, '#f8f9fa')           # Bootstrap light
 
 @headhunter_required
 @require_POST
@@ -320,7 +269,7 @@ def crear_accion_ajax(request):
     """
     Crea una nueva acción de agenda vía AJAX.
     """
-    # Pasar el usuario al formulario para que los querysets de oferta/candidatura se filtren correctamente
+    # Pasar el usuario al formulario para que los querysets de oferta/candidatura se filtren correctamente ---
     form = AgendaAccionForm(request.POST, user=request.user) 
     if form.is_valid():
         accion = form.save(commit=False)
@@ -355,7 +304,7 @@ def editar_accion_ajax(request, accion_id):
         if form.is_valid():
             # Validar que la oferta seleccionada (si existe) pertenezca al headhunter
             if form.cleaned_data.get('oferta') and not JobOffer.objects.filter(id=form.cleaned_data['oferta'].id, created_by=request.user).exists():
-                 return JsonResponse({'status': 'error', 'errors': {'oferta': ['La oferta seleccionada no te pertenece.']}}, status=403)
+                return JsonResponse({'status': 'error', 'errors': {'oferta': ['La oferta seleccionada no te pertenece.']}}, status=403)
             
             # Validar que la candidatura seleccionada (si existe) pertenezca a una oferta del headhunter
             if form.cleaned_data.get('candidatura') and not Candidatura.objects.filter(id=form.cleaned_data['candidatura'].id, offer__created_by=request.user).exists():
@@ -384,40 +333,16 @@ def eliminar_accion_ajax(request, accion_id):
     return JsonResponse({'status': 'ok'})
 
 
-@login_required
-def candidate_dashboard(request):
-    candidaturas = Candidatura.objects.filter(user=request.user).select_related('offer')
-
-    return render(request, 'jobs/candidato_dashboard.html', {
-        'candidaturas': candidaturas,
-    })
-
-# --- Vista de Inicio (Home)  cambia el dashboard según el rol del usuario ---
-
-class HomeView(LoginRequiredMixin, TemplateView):
-    template_name = 'jobs/home.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-
-        if user.groups.filter(name='headhunter').exists():
-            ofertas = JobOffer.objects.filter(created_by=user)
-            total_candidaturas = Candidatura.objects.filter(offer__in=ofertas).count()
-            context.update({
-                'rol': 'headhunter',
-                'ofertas': ofertas,
-                'total_candidaturas': total_candidaturas,
-            })
-
-        elif user.groups.filter(name='candidate').exists():
-            candidaturas = Candidatura.objects.filter(user=user).select_related('offer')
-            context.update({
-                'rol': 'candidate',
-                'candidaturas': candidaturas,
-            })
-
-        else:
-            context['rol'] = 'otro'
-
-        return context
+def color_por_tipo(tipo):
+    """
+    Devuelve el color asociado a un tipo de acción.
+    """
+    tipo_colores = {
+        'entrevista': '#007bff',  # Azul (bg-primary)
+        'llamada': '#28a745',     # Verde (bg-success)
+        'recordatorio': '#ffc107', # Amarillo (bg-warning)
+        'entrega': '#dc3545',     # Rojo (bg-danger)
+        'otro': '#6c757d',        # Gris (bg-secondary)
+    }
+    return tipo_colores.get(tipo, '#6c757d') # Gris por defecto
+    

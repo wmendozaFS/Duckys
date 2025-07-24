@@ -69,7 +69,18 @@
             <div class="description-content">
                 {{ offer.description|linebreaksbr }}
             </div>
+            <hr class="my-4">
+            <h5 class="mb-3 text-secondary"><i class="fas fa-align-left me-2"></i>Requerimientos</h5>
+            <div class="description-content">
+                {{ offer.requirements|linebreaksbr }}
+            </div>
+            <hr class="my-4">
+            <h5 class="mb-3 text-secondary"><i class="fas fa-align-left me-2"></i>Beneficios</h5>
+            <div class="description-content">
+                {{ offer.benefits|linebreaksbr }}
+            </div>
         </div>
+        
         <div class="card-footer text-muted small">
             Última actualización: {{ offer.updated_at|date:"d M Y H:i" }}
         </div>

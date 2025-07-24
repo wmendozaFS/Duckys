@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'jobs',
+
 ]
 
 MIDDLEWARE = [
@@ -139,7 +140,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Redirige a home tras login exitoso
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'home'
 
 # Redirige a login tras cerrar sesión
 LOGOUT_REDIRECT_URL = '/'
